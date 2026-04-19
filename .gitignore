@@ -1,0 +1,16 @@
+/.gradle/
+/build/
+**/build/
+**/out/
+*.iml
+*.class
+*.jar
+*.log
+.env*
+.idea/
+.vscode/
+local.properties
+captures/
+*.tmp
+Thumbs.db
+.DS_Store
