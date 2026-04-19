@@ -43,3 +43,8 @@ Valider rapidement le flux: ouverture app -> caméra -> scan -> analyse locale -
 - Photo de scan non persistée durablement.
 - Etats utilisateur explicites et cohérents.
 
+## Notes d'implémentation MVP
+- Etat UI géré via `ScanState` (`camera_ready`, `capturing`, `analyzing`, `success`, `error`, `permission_denied`).
+- Session de scan persistée en SQLite locale (Room) sans image brute.
+- Suppression image temporaire effectuée en fin de cycle (succès/erreur/annulation).
+
