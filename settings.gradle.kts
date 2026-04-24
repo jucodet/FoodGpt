@@ -11,6 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Add this if you are using experimental/preview Google AI tools
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
     }
 }
 
