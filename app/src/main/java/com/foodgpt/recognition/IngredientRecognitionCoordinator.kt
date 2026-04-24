@@ -21,11 +21,7 @@ class IngredientRecognitionCoordinator(
             source = "camera"
         )
         val (_, result) = engineSelector.recognize(command)
-        val enrichedItems = if (result.items.isEmpty()) {
-            extractionPipeline.extractOrderedItems("ingredients: inconnu", result.ocrConfidenceGlobal)
-        } else {
-            result.items
-        }
+        val enrichedItems = result.items
         val finalResult = result.copy(
             items = enrichedItems,
             autoValidated = result.ocrConfidenceGlobal >= FeatureConfig.AUTO_VALIDATE_OCR_THRESHOLD
@@ -36,7 +32,7 @@ class IngredientRecognitionCoordinator(
             finishedAt = System.currentTimeMillis(),
             status = finalResult.outcome,
             tempImageDeleted = file.delete() || !file.exists(),
-            errorCode = if (finalResult.outcome == "failure") "recognition_failed" else null
+            errorCode = if (finalResult.outcome == "error") "recognition_failed" else null
         )
         return finalResult
     }

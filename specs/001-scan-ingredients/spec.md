@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "je veux créer une application qui lit les ingrédients d'une liste prise en photo par mon smartphone"
 
+## Clarifications
+
+### Session 2026-04-24
+
+- Q: Harmonisation globale des specs (lieu de traitement de la transcription, cohérence avec les parcours photo 006 / 008) ? → A: Transcription et lecture depuis photo **sur l’appareil** pour la vision MVP documentée ; suppression de l’ambiguïté « traitement en ligne » dans les cas limites ; alignement maintenu sur la cible **moins de 10 secondes** jusqu’au résultat affiché (SC-002).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Scanner une liste d’ingrédients et obtenir du texte éditable (Priority: P1)
@@ -72,7 +78,7 @@ via les options du téléphone.
   de reprendre.
 - Texte avec retours à la ligne, colonnes, ou séparateurs variés (virgules, points-virgules, puces).
 - Langues/caractères spéciaux (accents), mélange majuscules/minuscules.
-- Échec réseau (si un traitement en ligne est utilisé): message clair et possibilité de réessayer.
+- Ressources locales insuffisantes, saturation du traitement sur l’appareil ou indisponibilité du moteur de lecture : message clair et possibilité de réessayer (la transcription ne dépend pas de la connectivité réseau pour le MVP documenté).
 - Données sensibles accidentelles dans la photo (ex: nom/adresse): éviter toute exposition involontaire
   lors du partage (prévisualisation).
 
@@ -93,6 +99,10 @@ via les options du téléphone.
   la transcription et permettre de corriger la structure.
 - **FR-007**: L’application MUST permettre de copier et partager le résultat (texte et/ou liste
   structurée).
+- **FR-008**: Pour le périmètre MVP documenté, la transcription texte de la liste d’ingrédients à partir
+  de la photo MUST s’effectuer sur l’appareil ; l’application NE DOIT PAS exiger l’envoi de l’image ni
+  d’une représentation dérivée à des fins de transcription vers un service distant pour produire ce
+  résultat.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -119,4 +129,8 @@ via les options du téléphone.
   détection d’allergènes.
 - Le stockage local suffit pour le MVP (pas de compte utilisateur requis).
 - Les photos sont principalement des listes horizontales “classiques” (étiquettes, emballages).
+- La lecture depuis photo (transcription) est traitée sur l’appareil pour le MVP, en cohérence avec les
+  specs associées aux parcours photo (affichage du texte reconnu, identification d’ingrédients) ; toute
+  évolution prévoyant un traitement distant fera l’objet d’une décision produit et d’une mise à jour
+  explicite de cette spec.
 

@@ -17,6 +17,7 @@ sealed class ScanState {
         val transcriptText: String,
         val items: List<String> = emptyList()
     ) : ScanState()
+    data class Empty(val message: String) : ScanState()
 
     data class Error(val message: String) : ScanState()
     data object PermissionDenied : ScanState()

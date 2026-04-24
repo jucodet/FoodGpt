@@ -15,4 +15,9 @@ class TemporaryImageManager(private val context: Context) {
         if (!file.exists()) return true
         return file.delete()
     }
+
+    fun cleanupAfterOutcome(file: File?, outcome: String): Boolean {
+        if (outcome == "processing") return false
+        return cleanupTempImage(file)
+    }
 }

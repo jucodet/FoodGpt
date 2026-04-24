@@ -32,6 +32,13 @@ data class IngredientRecognitionResult(
     val userMessage: String
 )
 
+data class PhotoTextRecognitionState(
+    val state: String,
+    val displayText: String? = null,
+    val message: String? = null,
+    val errorReason: String? = null
+)
+
 data class ValidateIngredientListCommand(
     val scanId: String,
     val finalItems: List<String>,

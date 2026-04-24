@@ -18,8 +18,10 @@ fun IngredientEditorScreen(
     onValidated: (Boolean) -> Unit
 ) {
     val items by viewModel.items.collectAsState()
+    val statusMessage by viewModel.statusMessage.collectAsState()
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Edition des ingredients")
+        statusMessage?.let { Text(it) }
         items.forEach { Text("- $it") }
         Button(onClick = { viewModel.validateAndSave(scanId, editedByUser = true, onValidated = onValidated) }) {
             Text("Valider")

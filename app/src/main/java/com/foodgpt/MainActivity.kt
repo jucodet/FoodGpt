@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
             engineSelector = RecognitionEngineSelector(
                 capabilityDetector = capabilityDetector,
                 aiEdgeGalleryRecognizer = AiEdgeGalleryRecognizer(),
-                localOcrFallbackRecognizer = LocalOcrFallbackRecognizer()
+                localOcrFallbackRecognizer = LocalOcrFallbackRecognizer(applicationContext)
             ),
             extractionPipeline = IngredientExtractionPipeline(),
             repository = repository

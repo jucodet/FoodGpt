@@ -75,6 +75,12 @@ fun CameraScreen(
                     Text("Nouveau scan")
                 }
             }
+            is ScanState.Empty -> {
+                Text((state as ScanState.Empty).message)
+                Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("retry_after_empty")) {
+                    Text("Réessayer")
+                }
+            }
 
             is ScanState.Error -> {
                 Text("Erreur: ${(state as ScanState.Error).message}")

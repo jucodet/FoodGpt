@@ -129,6 +129,8 @@ class CameraViewModel(
                         transcriptText = result.items.joinToString(", ") { it.normalizedText },
                         items = uiItems.map { it.text }
                     )
+                } else if (result.outcome == "empty") {
+                    ScanState.Empty(result.userMessage.ifBlank { "Aucun texte détecté" })
                 } else {
                     val code = failureClassifier.classify(result.ocrConfidenceGlobal, result.items.size)
                     val message = failureMessageBuilder.build(code)

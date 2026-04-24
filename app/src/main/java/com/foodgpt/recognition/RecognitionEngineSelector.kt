@@ -10,14 +10,12 @@ class RecognitionEngineSelector(
         val capability = RecognitionCapabilityResponse(
             scanId = command.scanId,
             aiEdgeGalleryAvailable = aiAvailable,
-            selectedEngine = if (aiAvailable) "ai_edge_gallery" else "local_ocr_fallback",
-            reason = capabilityDetector.explainAvailability()
+            selectedEngine = "local_ocr_fallback",
+            reason = "${capabilityDetector.explainAvailability()} - OCR local forcé pour éviter tout résultat factice."
         )
-        val result = if (aiAvailable) {
-            aiEdgeGalleryRecognizer.recognize(command)
-        } else {
-            localOcrFallbackRecognizer.recognize(command)
-        }
+        // Tant que le moteur AI Edge n'est pas branché sur une reconnaissance réelle,
+        // on force le fallback local pour garantir des résultats issus de la photo.
+        val result = localOcrFallbackRecognizer.recognize(command)
         return capability to result
     }
 }
