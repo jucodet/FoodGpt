@@ -1,0 +1,46 @@
+package com.foodgpt.recognition
+
+data class StartIngredientRecognitionCommand(
+    val scanId: String,
+    val imageUri: String,
+    val requestedAtEpochMs: Long,
+    val source: String
+)
+
+data class RecognitionCapabilityResponse(
+    val scanId: String,
+    val aiEdgeGalleryAvailable: Boolean,
+    val selectedEngine: String,
+    val reason: String
+)
+
+data class IngredientRecognitionItem(
+    val position: Int,
+    val rawText: String,
+    val normalizedText: String,
+    val confidence: Float,
+    val languageTag: String? = null,
+    val isAllergenMarked: Boolean
+)
+
+data class IngredientRecognitionResult(
+    val scanId: String,
+    val outcome: String,
+    val ocrConfidenceGlobal: Float,
+    val autoValidated: Boolean,
+    val items: List<IngredientRecognitionItem>,
+    val userMessage: String
+)
+
+data class ValidateIngredientListCommand(
+    val scanId: String,
+    val finalItems: List<String>,
+    val editedByUser: Boolean
+)
+
+data class ValidateIngredientListResult(
+    val scanId: String,
+    val accepted: Boolean,
+    val validatedAtEpochMs: Long,
+    val errors: List<String>
+)

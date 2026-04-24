@@ -3,6 +3,7 @@ package com.foodgpt.camera
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,7 +26,8 @@ fun CameraScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .widthIn(max = 720.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Mode appareil photo", style = MaterialTheme.typography.headlineSmall)
@@ -46,6 +48,7 @@ fun CameraScreen(
             is ScanState.Success -> {
                 Text("Analyse terminée")
                 Text((state as ScanState.Success).transcriptText)
+                (state as ScanState.Success).items.forEach { Text("- $it") }
                 Button(onClick = viewModel::onRetry) { Text("Nouveau scan") }
             }
 

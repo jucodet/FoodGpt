@@ -36,3 +36,9 @@
 
 - Extraction complète p95 < 8 secondes sur photo nette.
 - Interactions UI (édition/validation) sans jank visible.
+
+## Implementation Notes
+
+- Le moteur de reconnaissance sélectionne AI Edge Gallery si capacité détectée sur le device.
+- Le fallback OCR local est utilisé sinon, sans appel réseau.
+- La relance automatique est désactivée; seule une action utilisateur relance le scan.
