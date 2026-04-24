@@ -19,6 +19,8 @@ import com.foodgpt.recognition.IngredientExtractionPipeline
 import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.LocalOcrFallbackRecognizer
 import com.foodgpt.recognition.RecognitionEngineSelector
+import com.foodgpt.composition.GemmaModelLocator
+import com.foodgpt.composition.LiteRtGemmaEngine
 import com.foodgpt.scan.TemporaryImageManager
 
 class MainActivity : ComponentActivity() {
@@ -58,10 +60,12 @@ class MainActivity : ComponentActivity() {
             repository = repository
         )
         val imageManager = TemporaryImageManager(applicationContext)
+        val gemmaLocator = GemmaModelLocator(applicationContext)
+        val compositionEngine = LiteRtGemmaEngine(applicationContext, gemmaLocator)
 
         cameraViewModel = ViewModelProvider(
             this,
-            CameraViewModel.factory(application, coordinator)
+            CameraViewModel.factory(application, coordinator, compositionEngine)
         )[CameraViewModel::class.java]
 
         if (permissionHandler.hasCameraPermission(this)) {

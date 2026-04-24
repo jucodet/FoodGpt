@@ -9,4 +9,7 @@ object FeatureConfig {
 
     /** Feedback utilisateur post-capture (plan). */
     const val CAPTURE_FEEDBACK_TARGET_MS = 300L
+
+    /** Spec 009 SC-003 — analyse composition (Gemma) côté UI. */
+    const val COMPOSITION_ANALYSIS_TIMEOUT_MS = 30_000L
 }

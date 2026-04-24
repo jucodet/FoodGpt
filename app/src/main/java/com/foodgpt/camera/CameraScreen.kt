@@ -8,14 +8,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -64,6 +70,100 @@ fun CameraScreen(
                 Text("Caméra indisponible: ${(state as ScanState.CameraUnavailable).reason ?: "erreur inconnue"}")
                 Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("retry_camera")) {
                     Text("Réessayer")
+                }
+            }
+
+            ScanState.CompositionAnalyzing -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        "Analyse composition (Gemma)…",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.testTag("composition_analyzing_label")
+                    )
+                }
+            }
+
+            is ScanState.BilanReady -> {
+                val bilanState = state as ScanState.BilanReady
+                var showRaw by remember { mutableStateOf(false) }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Bilan composition", style = MaterialTheme.typography.titleMedium)
+                    Text("Ingrédients", style = MaterialTheme.typography.titleSmall)
+                    bilanState.bilan.ingredientLines.forEach { line ->
+                        Text("• $line", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text("Analyse", style = MaterialTheme.typography.titleSmall)
+                    Text(bilanState.bilan.compositionAnalysis, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        bilanState.bilan.disclaimer,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = { showRaw = !showRaw },
+                        modifier = Modifier.testTag("toggle_raw_transcript")
+                    ) {
+                        Text(if (showRaw) "Masquer le texte original" else "Voir le texte original")
+                    }
+                    if (showRaw) {
+                        Text(
+                            bilanState.rawTranscript,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.testTag("raw_transcript_secondary")
+                        )
+                    }
+                    Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("new_scan_button")) {
+                        Text("Nouveau scan")
+                    }
+                }
+            }
+
+            is ScanState.GemmaUnavailable -> {
+                val g = state as ScanState.GemmaUnavailable
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Analyse composition", style = MaterialTheme.typography.titleMedium)
+                    Text(g.message, modifier = Modifier.testTag("gemma_error_message"))
+                    Button(
+                        onClick = viewModel::retryCompositionAnalysis,
+                        modifier = Modifier.testTag("retry_composition_button")
+                    ) {
+                        Text("Réessayer l'analyse")
+                    }
+                    OutlinedButton(
+                        onClick = viewModel::showRawTranscriptOnly,
+                        modifier = Modifier.testTag("show_raw_transcript_button")
+                    ) {
+                        Text("Voir le texte brut")
+                    }
+                    Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("new_scan_button")) {
+                        Text("Nouveau scan")
+                    }
+                }
+            }
+
+            is ScanState.CompositionLimit -> {
+                val c = state as ScanState.CompositionLimit
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(c.message, style = MaterialTheme.typography.bodyLarge)
+                    OutlinedButton(
+                        onClick = viewModel::showRawTranscriptOnly,
+                        modifier = Modifier.testTag("composition_limit_show_raw")
+                    ) {
+                        Text("Voir le texte capturé")
+                    }
+                    Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("new_scan_button")) {
+                        Text("Nouveau scan")
+                    }
                 }
             }
 

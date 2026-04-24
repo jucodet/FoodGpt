@@ -3,12 +3,18 @@ package com.foodgpt.camera
 import android.app.Application
 import android.os.SystemClock
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.foodgpt.composition.AnalyzeCompositionResult
+import com.foodgpt.composition.CompositionAnalysisEngine
+import com.foodgpt.composition.CompositionMessages
+import com.foodgpt.composition.CompositionResultValidator
+import com.foodgpt.composition.GemmaErrorCode
 import com.foodgpt.core.FeatureConfig
 import com.foodgpt.ingredients.ExtractedIngredientMapper
 import com.foodgpt.ingredients.RetryScanActionHandler
@@ -24,12 +30,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
-import java.util.UUID
 
 class CameraViewModel(
     application: Application,
     private val coordinator: IngredientRecognitionCoordinator?,
+    private val compositionEngine: CompositionAnalysisEngine? = null,
     private val permissionHandler: CameraPermissionHandler = CameraPermissionHandler(),
     private val mapper: ExtractedIngredientMapper = ExtractedIngredientMapper(),
     private val failureClassifier: ScanFailureClassifier = ScanFailureClassifier(),
@@ -46,6 +53,16 @@ class CameraViewModel(
 
     private var bindJob: Job? = null
     private var inFlightScan = false
+
+    private var lastRawTranscript: String? = null
+    private var lastItemsPreview: List<String>? = null
+
+    /** Exclus tests unitaires — simule un OCR terminé avant l’étape composition. */
+    @VisibleForTesting
+    fun debugSeedTranscript(transcript: String, items: List<String> = emptyList()) {
+        lastRawTranscript = transcript
+        lastItemsPreview = items
+    }
 
     fun onPermissionDenied() {
         bindJob?.cancel()
@@ -68,12 +85,36 @@ class CameraViewModel(
         bindJob?.cancel()
         captureController.unbind()
         inFlightScan = false
+        lastRawTranscript = null
+        lastItemsPreview = null
         _previewSession.value += 1
         _scanState.value = if (permissionHandler.hasCameraPermission(getApplication())) {
             ScanState.CameraReady
         } else {
             ScanState.PermissionDenied
         }
+    }
+
+    /**
+     * Relance uniquement l’étape composition (Gemma) après une erreur, sans nouvelle capture.
+     */
+    fun retryCompositionAnalysis() {
+        val engine = compositionEngine ?: return
+        val raw = lastRawTranscript ?: return
+        val items = lastItemsPreview.orEmpty()
+        viewModelScope.launch {
+            _scanState.value = ScanState.CompositionAnalyzing
+            runCompositionStage(engine, raw, items)
+        }
+    }
+
+    /**
+     * Repli : afficher le texte OCR comme avant le bilan (spec 009 repli texte brut).
+     */
+    fun showRawTranscriptOnly() {
+        val raw = lastRawTranscript ?: return
+        val items = lastItemsPreview.orEmpty()
+        _scanState.value = ScanState.Success(transcriptText = raw, items = items)
     }
 
     fun attachPreview(previewView: PreviewView, lifecycleOwner: LifecycleOwner) {
@@ -123,27 +164,86 @@ class CameraViewModel(
 
                 _scanState.value = ScanState.Analyzing
                 val result = scanCoordinator.runRecognition(outputFile)
-                _scanState.value = if (result.outcome == "success" || result.outcome == "partial") {
+                if (result.outcome == "success" || result.outcome == "partial") {
                     val uiItems = mapper.toUi(result.items)
-                    ScanState.Success(
-                        transcriptText = result.items.joinToString(", ") { it.normalizedText },
-                        items = uiItems.map { it.text }
-                    )
+                    val itemLabels = uiItems.map { it.text }
+                    val transcriptText = result.items.joinToString("\n") { it.normalizedText }
+                    val engine = compositionEngine
+                    if (engine == null) {
+                        _scanState.value = ScanState.Success(
+                            transcriptText = result.items.joinToString(", ") { it.normalizedText },
+                            items = itemLabels
+                        )
+                    } else {
+                        lastRawTranscript = transcriptText
+                        lastItemsPreview = itemLabels
+                        _scanState.value = ScanState.CompositionAnalyzing
+                        runCompositionStage(engine, transcriptText, itemLabels)
+                    }
                 } else if (result.outcome == "empty") {
-                    ScanState.Empty(result.userMessage.ifBlank { "Aucun texte détecté" })
+                    _scanState.value = ScanState.Empty(result.userMessage.ifBlank { "Aucun texte détecté" })
                 } else {
                     val code = failureClassifier.classify(result.ocrConfidenceGlobal, result.items.size)
                     val message = failureMessageBuilder.build(code)
                     if (!retryHandler.canRetryManually()) {
-                        ScanState.Error("Relance manuelle indisponible")
+                        _scanState.value = ScanState.Error("Relance manuelle indisponible")
                     } else {
-                        ScanState.Error(message)
+                        _scanState.value = ScanState.Error(message)
                     }
                 }
             } finally {
                 captureController.unbind()
                 inFlightScan = false
             }
+        }
+    }
+
+    private suspend fun runCompositionStage(
+        engine: CompositionAnalysisEngine,
+        rawText: String,
+        itemsPreview: List<String>
+    ) {
+        val outcome = withTimeoutOrNull(FeatureConfig.COMPOSITION_ANALYSIS_TIMEOUT_MS) {
+            engine.analyze(rawText, FeatureConfig.COMPOSITION_ANALYSIS_TIMEOUT_MS)
+        } ?: AnalyzeCompositionResult.GemmaError(
+            GemmaErrorCode.GEMMA_TIMEOUT,
+            CompositionMessages.GEMMA_TIMEOUT_USER
+        )
+        _scanState.value = when (outcome) {
+            is AnalyzeCompositionResult.BilanSuccess -> {
+                val emptyReject = CompositionResultValidator.rejectEmptyStructure(outcome.bilan)
+                if (emptyReject != null) {
+                    ScanState.CompositionLimit(
+                        message = emptyReject.message,
+                        rawTranscript = rawText
+                    )
+                } else {
+                    when (val v = CompositionResultValidator.validateAgainstSource(outcome.bilan, rawText)) {
+                        is AnalyzeCompositionResult.BilanSuccess -> ScanState.BilanReady(
+                            bilan = v.bilan,
+                            rawTranscript = rawText,
+                            itemsPreview = itemsPreview
+                        )
+                        is AnalyzeCompositionResult.CompositionLimit -> ScanState.CompositionLimit(
+                            message = v.message,
+                            rawTranscript = rawText
+                        )
+                        else -> ScanState.CompositionLimit(
+                            CompositionMessages.COMPOSITION_LIMIT_GENERIC,
+                            rawText
+                        )
+                    }
+                }
+            }
+            is AnalyzeCompositionResult.GemmaError -> ScanState.GemmaUnavailable(
+                code = outcome.code,
+                message = outcome.message,
+                rawTranscript = rawText
+            )
+            is AnalyzeCompositionResult.CompositionLimit -> ScanState.CompositionLimit(
+                message = outcome.message,
+                rawTranscript = rawText
+            )
         }
     }
 
@@ -158,13 +258,14 @@ class CameraViewModel(
 
         fun factory(
             application: Application,
-            coordinator: IngredientRecognitionCoordinator?
+            coordinator: IngredientRecognitionCoordinator?,
+            compositionEngine: CompositionAnalysisEngine? = null
         ): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     require(modelClass.isAssignableFrom(CameraViewModel::class.java))
-                    return CameraViewModel(application, coordinator) as T
+                    return CameraViewModel(application, coordinator, compositionEngine) as T
                 }
             }
         }

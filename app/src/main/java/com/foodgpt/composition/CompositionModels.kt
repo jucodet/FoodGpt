@@ -1,0 +1,25 @@
+package com.foodgpt.composition
+
+enum class GemmaErrorCode {
+    GEMMA_NOT_FOUND,
+    GEMMA_LOAD_FAILED,
+    GEMMA_TIMEOUT
+}
+
+data class CompositionBilan(
+    val ingredientLines: List<String>,
+    val compositionAnalysis: String,
+    val disclaimer: String,
+    val promptVersion: String = GemmaModelPaths.PROMPT_VERSION
+)
+
+sealed class AnalyzeCompositionResult {
+    data class BilanSuccess(val bilan: CompositionBilan) : AnalyzeCompositionResult()
+
+    data class GemmaError(
+        val code: GemmaErrorCode,
+        val message: String
+    ) : AnalyzeCompositionResult()
+
+    data class CompositionLimit(val message: String) : AnalyzeCompositionResult()
+}

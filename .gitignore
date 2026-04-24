@@ -14,3 +14,8 @@ captures/
 *.tmp
 Thumbs.db
 .DS_Store
+
+# Modèles Gemma locaux (binaires lourds — spec 009)
+app/src/main/assets/gemma/*.tflite
+app/src/main/assets/gemma/*.bin
+app/src/main/assets/gemma/*.litertlm

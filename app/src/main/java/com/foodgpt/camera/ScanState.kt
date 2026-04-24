@@ -1,5 +1,8 @@
 package com.foodgpt.camera
 
+import com.foodgpt.composition.CompositionBilan
+import com.foodgpt.composition.GemmaErrorCode
+
 sealed class ScanState {
     /** Permission OK, en attente d’attache surface / redémarrage preview. */
     data object CameraReady : ScanState()
@@ -17,6 +20,30 @@ sealed class ScanState {
         val transcriptText: String,
         val items: List<String> = emptyList()
     ) : ScanState()
+
+    /** OCR terminé ; inférence Gemma / bilan en cours (spec 009). */
+    data object CompositionAnalyzing : ScanState()
+
+    /** Bilan liste + analyse affiché (spec 009 US1). */
+    data class BilanReady(
+        val bilan: CompositionBilan,
+        val rawTranscript: String,
+        val itemsPreview: List<String>
+    ) : ScanState()
+
+    /** Gemma absent ou exécution impossible (spec 009 US3). */
+    data class GemmaUnavailable(
+        val code: GemmaErrorCode,
+        val message: String,
+        val rawTranscript: String
+    ) : ScanState()
+
+    /** Texte non exploitable pour un bilan fiable (spec 009 US2). */
+    data class CompositionLimit(
+        val message: String,
+        val rawTranscript: String
+    ) : ScanState()
+
     data class Empty(val message: String) : ScanState()
 
     data class Error(val message: String) : ScanState()
