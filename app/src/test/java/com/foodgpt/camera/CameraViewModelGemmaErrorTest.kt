@@ -21,8 +21,11 @@ class CameraViewModelGemmaErrorTest {
     fun engineReturnsNotFound_emitsGemmaUnavailable_notBilanReady() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val engine = object : CompositionAnalysisEngine {
-            override suspend fun analyze(rawText: String, maxInferenceMs: Long) =
-                AnalyzeCompositionResult.GemmaError(GemmaErrorCode.GEMMA_NOT_FOUND, "Gemma introuvable")
+            override suspend fun analyze(
+                rawText: String,
+                maxInferenceMs: Long,
+                onStreamPartial: ((String) -> Unit)?
+            ) = AnalyzeCompositionResult.GemmaError(GemmaErrorCode.GEMMA_NOT_FOUND, "Gemma introuvable")
         }
         val vm = CameraViewModel(app, coordinator = null, compositionEngine = engine)
         vm.debugSeedTranscript("eau, sucre")

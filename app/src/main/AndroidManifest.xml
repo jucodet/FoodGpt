@@ -4,10 +4,14 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application
+        android:name=".FoodGptApplication"
         android:allowBackup="false"
         android:label="FoodGPT"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- LiteRT-LM GPU (OpenCL) — recommandé par la doc ; non bloquant si absent sur l’appareil. -->
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

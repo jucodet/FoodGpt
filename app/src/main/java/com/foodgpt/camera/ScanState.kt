@@ -22,7 +22,8 @@ sealed class ScanState {
     ) : ScanState()
 
     /** OCR terminé ; inférence Gemma / bilan en cours (spec 009). */
-    data object CompositionAnalyzing : ScanState()
+    /** [partialResponse] : sortie modèle en cours (streaming) pour feedback immédiat. */
+    data class CompositionAnalyzing(val partialResponse: String = "") : ScanState()
 
     /** Bilan liste + analyse affiché (spec 009 US1). */
     data class BilanReady(

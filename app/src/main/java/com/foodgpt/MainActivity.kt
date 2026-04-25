@@ -5,12 +5,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
-import androidx.room.Room
 import com.foodgpt.camera.CameraScreen
 import com.foodgpt.camera.CameraViewModel
 import com.foodgpt.camera.ScanState
-import com.foodgpt.data.db.AppDatabase
+import com.foodgpt.composition.GemmaModelLocator
+import com.foodgpt.composition.LiteRtGemmaEngine
 import com.foodgpt.data.repository.ScanSessionRepository
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.AiEdgeGalleryRecognizer
@@ -19,9 +30,9 @@ import com.foodgpt.recognition.IngredientExtractionPipeline
 import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.LocalOcrFallbackRecognizer
 import com.foodgpt.recognition.RecognitionEngineSelector
-import com.foodgpt.composition.GemmaModelLocator
-import com.foodgpt.composition.LiteRtGemmaEngine
 import com.foodgpt.scan.TemporaryImageManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -42,49 +53,60 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "foodgpt.db"
-        ).build()
-        val repository = ScanSessionRepository(db.scanSessionDao())
-        val capabilityDetector = DeviceAiCapabilityDetector(applicationContext)
-        val coordinator = IngredientRecognitionCoordinator(
-            engineSelector = RecognitionEngineSelector(
-                capabilityDetector = capabilityDetector,
-                aiEdgeGalleryRecognizer = AiEdgeGalleryRecognizer(),
-                localOcrFallbackRecognizer = LocalOcrFallbackRecognizer(applicationContext)
-            ),
-            extractionPipeline = IngredientExtractionPipeline(),
-            repository = repository
-        )
-        val imageManager = TemporaryImageManager(applicationContext)
-        val gemmaLocator = GemmaModelLocator(applicationContext)
-        val compositionEngine = LiteRtGemmaEngine(applicationContext, gemmaLocator)
-
-        cameraViewModel = ViewModelProvider(
-            this,
-            CameraViewModel.factory(application, coordinator, compositionEngine)
-        )[CameraViewModel::class.java]
-
-        if (permissionHandler.hasCameraPermission(this)) {
-            cameraViewModel.onPermissionGranted()
-        } else {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        val app = application as FoodGptApplication
 
         setContent {
-            CameraScreen(
-                viewModel = cameraViewModel,
-                onCreateTempImage = { imageManager.createTempImageFile() },
-                onRequestCameraPermission = {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                },
-                onOpenAppSettings = {
-                    startActivity(permissionHandler.buildAppSettingsIntent(this))
+            val imageManager = remember { TemporaryImageManager(applicationContext) }
+            var uiReady by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                val coordinator = withContext(Dispatchers.IO) {
+                    val db = app.database
+                    val repository = ScanSessionRepository(db.scanSessionDao())
+                    val capabilityDetector = DeviceAiCapabilityDetector(applicationContext)
+                    IngredientRecognitionCoordinator(
+                        engineSelector = RecognitionEngineSelector(
+                            capabilityDetector = capabilityDetector,
+                            aiEdgeGalleryRecognizer = AiEdgeGalleryRecognizer(),
+                            localOcrFallbackRecognizer = LocalOcrFallbackRecognizer(applicationContext)
+                        ),
+                        extractionPipeline = IngredientExtractionPipeline(),
+                        repository = repository
+                    )
                 }
-            )
+                val gemmaLocator = GemmaModelLocator(applicationContext)
+                val compositionEngine = LiteRtGemmaEngine(applicationContext, gemmaLocator)
+                cameraViewModel = ViewModelProvider(
+                    this@MainActivity,
+                    CameraViewModel.factory(application, coordinator, compositionEngine)
+                )[CameraViewModel::class.java]
+                if (permissionHandler.hasCameraPermission(this@MainActivity)) {
+                    cameraViewModel.onPermissionGranted()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+                uiReady = true
+            }
+            if (!uiReady) {
+                MaterialTheme {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            } else {
+                CameraScreen(
+                    viewModel = cameraViewModel,
+                    onCreateTempImage = { imageManager.createTempImageFile() },
+                    onRequestCameraPermission = {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    },
+                    onOpenAppSettings = {
+                        startActivity(permissionHandler.buildAppSettingsIntent(this@MainActivity))
+                    }
+                )
+            }
         }
     }
 

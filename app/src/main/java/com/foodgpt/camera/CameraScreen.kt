@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -73,7 +74,8 @@ fun CameraScreen(
                 }
             }
 
-            ScanState.CompositionAnalyzing -> {
+            is ScanState.CompositionAnalyzing -> {
+                val analyzing = state as ScanState.CompositionAnalyzing
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,6 +87,18 @@ fun CameraScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.testTag("composition_analyzing_label")
                     )
+                    if (analyzing.partialResponse.isNotBlank()) {
+                        Text(
+                            text = analyzing.partialResponse,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 180.dp)
+                                .verticalScroll(rememberScrollState())
+                                .testTag("composition_streaming_draft")
+                        )
+                    }
                 }
             }
 

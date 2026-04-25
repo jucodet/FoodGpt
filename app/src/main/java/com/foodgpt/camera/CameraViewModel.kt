@@ -27,10 +27,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 class CameraViewModel(
@@ -103,7 +103,7 @@ class CameraViewModel(
         val raw = lastRawTranscript ?: return
         val items = lastItemsPreview.orEmpty()
         viewModelScope.launch {
-            _scanState.value = ScanState.CompositionAnalyzing
+            _scanState.value = ScanState.CompositionAnalyzing()
             runCompositionStage(engine, raw, items)
         }
     }
@@ -177,7 +177,7 @@ class CameraViewModel(
                     } else {
                         lastRawTranscript = transcriptText
                         lastItemsPreview = itemLabels
-                        _scanState.value = ScanState.CompositionAnalyzing
+                        _scanState.value = ScanState.CompositionAnalyzing()
                         runCompositionStage(engine, transcriptText, itemLabels)
                     }
                 } else if (result.outcome == "empty") {
@@ -203,12 +203,19 @@ class CameraViewModel(
         rawText: String,
         itemsPreview: List<String>
     ) {
-        val outcome = withTimeoutOrNull(FeatureConfig.COMPOSITION_ANALYSIS_TIMEOUT_MS) {
-            engine.analyze(rawText, FeatureConfig.COMPOSITION_ANALYSIS_TIMEOUT_MS)
-        } ?: AnalyzeCompositionResult.GemmaError(
-            GemmaErrorCode.GEMMA_TIMEOUT,
-            CompositionMessages.GEMMA_TIMEOUT_USER
-        )
+        // Le délai est appliqué dans le moteur (code JNI bloquant : withTimeout coroutine ne suffit pas).
+        val outcome = engine.analyze(
+            rawText,
+            FeatureConfig.COMPOSITION_ANALYSIS_TIMEOUT_MS
+        ) { partial ->
+            _scanState.update { cur ->
+                if (cur is ScanState.CompositionAnalyzing) {
+                    cur.copy(partialResponse = partial)
+                } else {
+                    cur
+                }
+            }
+        }
         _scanState.value = when (outcome) {
             is AnalyzeCompositionResult.BilanSuccess -> {
                 val emptyReject = CompositionResultValidator.rejectEmptyStructure(outcome.bilan)

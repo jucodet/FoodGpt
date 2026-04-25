@@ -40,6 +40,10 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+    // Évite la compression APK des .litertlm (gros binaires ; openFd / mmap plus fiables si besoin).
+    androidResources {
+        noCompress += "litertlm"
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -62,8 +66,9 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.6.8")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.8")
-    // LiteRT + LiteRT-LM — inférence Gemma locale (spec 009 ; `LiteRtGemmaEngine`)
-    implementation("com.google.ai.edge.litert:litert:1.0.1")
+    // LiteRT-LM — inférence Gemma locale (spec 009 ; `LiteRtGemmaEngine`).
+    // Ne pas ajouter `litert` séparément : une autre version peut fusionner un
+    // `liblitertlm_jni.so` incompatible et provoquer « No implementation found … nativeCheckLoaded ».
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
 
 
