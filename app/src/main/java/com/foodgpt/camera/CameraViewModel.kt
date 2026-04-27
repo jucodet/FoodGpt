@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.foodgpt.analysis.Gemma4LocalUiMessageResolver
 import androidx.lifecycle.viewModelScope
 import com.foodgpt.composition.AnalyzeCompositionResult
 import com.foodgpt.composition.CompositionAnalysisEngine
@@ -260,11 +261,14 @@ class CameraViewModel(
                     }
                 }
             }
-            is AnalyzeCompositionResult.GemmaError -> ScanState.GemmaUnavailable(
-                code = outcome.code,
-                message = outcome.message,
-                rawTranscript = rawText
-            )
+            is AnalyzeCompositionResult.GemmaError -> {
+                val uiMessage = Gemma4LocalUiMessageResolver.resolve(outcome.code, outcome.message)
+                ScanState.GemmaUnavailable(
+                    code = outcome.code,
+                    message = uiMessage,
+                    rawTranscript = rawText
+                )
+            }
             is AnalyzeCompositionResult.CompositionLimit -> ScanState.CompositionLimit(
                 message = outcome.message,
                 rawTranscript = rawText
