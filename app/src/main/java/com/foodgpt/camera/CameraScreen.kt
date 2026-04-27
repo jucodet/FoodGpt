@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.foodgpt.welcome.WelcomeMessageUiState
 import java.io.File
 
 @Composable
@@ -39,6 +40,7 @@ fun CameraScreen(
 ) {
     val state by viewModel.scanState.collectAsState()
     val previewSession by viewModel.previewSession.collectAsState()
+    val welcomeState by viewModel.welcomeUiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     Column(
@@ -49,6 +51,13 @@ fun CameraScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Mode appareil photo", style = MaterialTheme.typography.headlineSmall)
+        if (welcomeState is WelcomeMessageUiState.Displayed) {
+            Text(
+                text = (welcomeState as WelcomeMessageUiState.Displayed).text,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.testTag("welcome_message_banner")
+            )
+        }
 
         when (state) {
             ScanState.PermissionDenied -> {

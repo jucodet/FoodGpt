@@ -22,6 +22,12 @@ import com.foodgpt.ingredients.ScanFailureMessageBuilder
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.ScanFailureClassifier
+import com.foodgpt.welcome.WelcomeDisplayLogger
+import com.foodgpt.welcome.WelcomeMessagePolicy
+import com.foodgpt.welcome.WelcomeMessageProvider
+import com.foodgpt.welcome.WelcomeMessageSelector
+import com.foodgpt.welcome.WelcomeMessageUiState
+import com.foodgpt.welcome.toUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +48,12 @@ class CameraViewModel(
     private val failureClassifier: ScanFailureClassifier = ScanFailureClassifier(),
     private val failureMessageBuilder: ScanFailureMessageBuilder = ScanFailureMessageBuilder(),
     private val retryHandler: RetryScanActionHandler = RetryScanActionHandler(),
-    private val captureController: CameraCaptureController = CameraCaptureController(application.applicationContext)
+    private val captureController: CameraCaptureController = CameraCaptureController(application.applicationContext),
+    private val welcomePolicy: WelcomeMessagePolicy = WelcomeMessagePolicy(
+        provider = WelcomeMessageProvider(application.applicationContext),
+        selector = WelcomeMessageSelector(),
+        logger = WelcomeDisplayLogger()
+    )
 ) : AndroidViewModel(application) {
 
     private val _scanState = MutableStateFlow<ScanState>(ScanState.CameraReady)
@@ -50,6 +61,9 @@ class CameraViewModel(
 
     private val _previewSession = MutableStateFlow(0)
     val previewSession: StateFlow<Int> = _previewSession.asStateFlow()
+
+    private val _welcomeUiState = MutableStateFlow<WelcomeMessageUiState>(WelcomeMessageUiState.Hidden)
+    val welcomeUiState: StateFlow<WelcomeMessageUiState> = _welcomeUiState.asStateFlow()
 
     private var bindJob: Job? = null
     private var inFlightScan = false
@@ -93,6 +107,10 @@ class CameraViewModel(
         } else {
             ScanState.PermissionDenied
         }
+    }
+
+    fun onLoginSucceeded(userId: String = "connected-user") {
+        _welcomeUiState.value = welcomePolicy.onLoginSucceeded(userId).toUiState()
     }
 
     /**

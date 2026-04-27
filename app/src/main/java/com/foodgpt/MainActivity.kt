@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                     this@MainActivity,
                     CameraViewModel.factory(application, coordinator, compositionEngine)
                 )[CameraViewModel::class.java]
+                cameraViewModel.onLoginSucceeded()
                 if (permissionHandler.hasCameraPermission(this@MainActivity)) {
                     cameraViewModel.onPermissionGranted()
                 } else {

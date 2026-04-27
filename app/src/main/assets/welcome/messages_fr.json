@@ -1,0 +1,23 @@
+[
+  {
+    "id": "w1",
+    "text": "Heureux de te revoir, tu vas tout dechirer aujourd'hui !",
+    "language": "fr",
+    "toneTags": ["positif", "chaleureux"],
+    "isActive": true
+  },
+  {
+    "id": "w2",
+    "text": "Bienvenue ! Un petit pas aujourd'hui, un grand sourire ce soir.",
+    "language": "fr",
+    "toneTags": ["positif", "chaleureux"],
+    "isActive": true
+  },
+  {
+    "id": "w3",
+    "text": "Content de te voir ici, ta bonne humeur fait plaisir !",
+    "language": "fr",
+    "toneTags": ["positif", "chaleureux"],
+    "isActive": true
+  }
+]
