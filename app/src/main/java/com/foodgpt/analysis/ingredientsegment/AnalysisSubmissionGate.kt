@@ -22,7 +22,8 @@ class AnalysisSubmissionGate {
         }
 
         val segment = extraction.segmentText.orEmpty().trim()
-        if (segment.isBlank() || ingredientsLabelOnlyRegex.matches(segment)) {
+        val normalizedSegment = segment.lowercase()
+        if (normalizedSegment.isBlank() || ingredientsLabelOnlyRegex.matches(normalizedSegment)) {
             logBlocked(scanId, SubmissionBlockedReason.EMPTY_SEGMENT)
             return AnalysisSubmissionDecision(
                 scanId = scanId,
