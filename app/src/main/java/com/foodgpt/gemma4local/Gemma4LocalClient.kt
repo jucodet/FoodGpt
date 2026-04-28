@@ -1,6 +1,7 @@
 package com.foodgpt.gemma4local
 
 import android.os.SystemClock
+import android.util.Log
 import com.foodgpt.gemma4local.model.AnalyseTextuelleErrorType
 import com.foodgpt.gemma4local.model.AnalyseTextuelleResult
 import com.foodgpt.gemma4local.model.AnalyseTextuelleStatus
@@ -73,6 +74,11 @@ class Gemma4LocalClient(
             )
             result
         } catch (t: Throwable) {
+            Log.e(
+                TAG,
+                "analyze_failed requestId=${request.requestId} throwable=${t::class.java.simpleName} message=${t.message}",
+                t
+            )
             val mapped = errorMapper.map(t)
             val latency = SystemClock.elapsedRealtime() - started
             val failed = AnalyseTextuelleResult(
@@ -92,5 +98,9 @@ class Gemma4LocalClient(
             )
             failed
         }
+    }
+
+    companion object {
+        private const val TAG = "Gemma4LocalClient"
     }
 }

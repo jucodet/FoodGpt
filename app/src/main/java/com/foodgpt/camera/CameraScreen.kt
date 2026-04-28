@@ -38,7 +38,8 @@ fun CameraScreen(
     viewModel: CameraViewModel,
     onCreateTempImage: () -> File,
     onRequestCameraPermission: () -> Unit,
-    onOpenAppSettings: () -> Unit
+    onOpenAppSettings: () -> Unit,
+    onChooseGemmaModel: () -> Unit
 ) {
     val state by viewModel.scanState.collectAsState()
     val previewSession by viewModel.previewSession.collectAsState()
@@ -173,6 +174,12 @@ fun CameraScreen(
                         modifier = Modifier.testTag("show_raw_transcript_button")
                     ) {
                         Text("Voir le texte brut")
+                    }
+                    OutlinedButton(
+                        onClick = onChooseGemmaModel,
+                        modifier = Modifier.testTag("choose_gemma_model_button")
+                    ) {
+                        Text("Choisir un modele Gemma")
                     }
                     Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("new_scan_button")) {
                         Text("Nouveau scan")

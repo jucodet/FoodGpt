@@ -20,11 +20,20 @@ class Gemma4LocalErrorMapper {
                 GemmaErrorCode.GEMMA_TIMEOUT,
                 CompositionMessages.GEMMA_TIMEOUT_USER
             )
-            is IllegalStateException -> Gemma4LocalMappedError(
-                AnalyseTextuelleErrorType.API_UNAVAILABLE,
-                GemmaErrorCode.GEMMA_NOT_FOUND,
-                Gemma4LocalMessages.API_UNAVAILABLE
-            )
+            is IllegalStateException ->
+                if (error.message?.contains("Modele Gemma local indisponible") == true) {
+                    Gemma4LocalMappedError(
+                        AnalyseTextuelleErrorType.API_UNAVAILABLE,
+                        GemmaErrorCode.GEMMA_NOT_FOUND,
+                        Gemma4LocalMessages.MODEL_UNAVAILABLE
+                    )
+                } else {
+                    Gemma4LocalMappedError(
+                        AnalyseTextuelleErrorType.UNKNOWN,
+                        GemmaErrorCode.GEMMA_LOAD_FAILED,
+                        Gemma4LocalMessages.MODEL_EXECUTION_FAILED
+                    )
+                }
             is IOException -> Gemma4LocalMappedError(
                 AnalyseTextuelleErrorType.NETWORK_LOCAL,
                 GemmaErrorCode.GEMMA_LOAD_FAILED,

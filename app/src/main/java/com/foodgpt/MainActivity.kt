@@ -1,7 +1,10 @@
 package com.foodgpt
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +31,7 @@ import com.foodgpt.gemma4local.Gemma4LocalAvailabilityChecker
 import com.foodgpt.gemma4local.Gemma4LocalClient
 import com.foodgpt.gemma4local.Gemma4LocalErrorMapper
 import com.foodgpt.gemma4local.Gemma4LocalMetricsLogger
+import com.foodgpt.gemma4local.GemmaModelImportManager
 import com.foodgpt.gemma4local.Gemma4LocalRequestMapper
 import com.foodgpt.home.HomeSpecPriorityResolver
 import com.foodgpt.permissions.CameraPermissionHandler
@@ -44,6 +48,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private val permissionHandler = CameraPermissionHandler()
+    private val modelImportManager by lazy { GemmaModelImportManager(applicationContext) }
 
     private lateinit var cameraViewModel: CameraViewModel
 
@@ -55,6 +60,29 @@ class MainActivity : ComponentActivity() {
             cameraViewModel.onPermissionGranted()
         } else {
             cameraViewModel.onPermissionDenied()
+        }
+    }
+
+    private val chooseGemmaModelLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+        val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        runCatching { contentResolver.takePersistableUriPermission(uri, takeFlags) }
+        val hadLocalModel = modelImportManager.hasLocalModel()
+        val imported = modelImportManager.importFromUri(uri, overwriteExisting = false)
+        if (imported) {
+            if (::cameraViewModel.isInitialized) {
+                cameraViewModel.onGemmaModelImported()
+            }
+            val message = if (hadLocalModel) {
+                "Modele deja present, reutilisation sans re-telechargement."
+            } else {
+                "Modele Gemma importe."
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Import du modele impossible.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -122,6 +150,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onOpenAppSettings = {
                         startActivity(permissionHandler.buildAppSettingsIntent(this@MainActivity))
+                    },
+                    onChooseGemmaModel = {
+                        chooseGemmaModelLauncher.launch(arrayOf("*/*"))
                     }
                 )
             }
