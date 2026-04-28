@@ -125,6 +125,10 @@ class CameraViewModel(
         refreshMediaPipeAvailability()
     }
 
+    fun onGemmaModelImported() {
+        refreshMediaPipeAvailability()
+    }
+
     /**
      * Relance uniquement l’étape composition (Gemma) après une erreur, sans nouvelle capture.
      */

@@ -23,7 +23,7 @@ class Gemma4LocalErrorMapper {
             is IllegalStateException -> Gemma4LocalMappedError(
                 AnalyseTextuelleErrorType.API_UNAVAILABLE,
                 GemmaErrorCode.GEMMA_NOT_FOUND,
-                Gemma4LocalMessages.API_UNAVAILABLE
+                Gemma4LocalMessages.MODEL_UNAVAILABLE
             )
             is IOException -> Gemma4LocalMappedError(
                 AnalyseTextuelleErrorType.NETWORK_LOCAL,

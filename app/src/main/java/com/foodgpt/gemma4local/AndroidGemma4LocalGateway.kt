@@ -54,7 +54,10 @@ class AndroidGemma4LocalGateway(
 
     override suspend fun ping(): Boolean {
         return withContext(Dispatchers.IO) {
-            modelLocator.resolve() is GemmaModelLocation.Ready
+            runCatching {
+                Backend.CPU()
+                true
+            }.getOrDefault(false)
         }
     }
 

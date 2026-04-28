@@ -25,6 +25,9 @@ class GemmaModelLocator(private val context: Context) {
         return try {
             val outDir = File(context.filesDir, GemmaModelPaths.ASSET_DIRECTORY).apply { mkdirs() }
             val outFile = File(outDir, GemmaModelPaths.EXPECTED_MODEL_FILENAME)
+            if (outFile.isFile && outFile.length() > 0L) {
+                return GemmaModelLocation.Ready(outFile)
+            }
             val assetBytes = assetDeclaredLengthBytes(assetPath)
             val reuseExisting =
                 assetBytes != null &&
