@@ -25,6 +25,7 @@ import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.ScanFailureClassifier
 import com.foodgpt.gemma4local.AndroidGemma4LocalGateway
 import com.foodgpt.gemma4local.Gemma4LocalAvailabilityChecker
+import com.foodgpt.home.MediaPipeLlmAvailabilityProbe
 import com.foodgpt.home.MediaPipeStatusViewState
 import com.foodgpt.welcome.WelcomeDisplayLogger
 import com.foodgpt.welcome.WelcomeMessagePolicy
@@ -76,9 +77,7 @@ class CameraViewModel(
 
     private var lastRawTranscript: String? = null
     private var lastItemsPreview: List<String>? = null
-    private val mediaPipeAvailabilityChecker = Gemma4LocalAvailabilityChecker(
-        AndroidGemma4LocalGateway(application.applicationContext)
-    )
+    private val mediaPipeApiProbe = MediaPipeLlmAvailabilityProbe()
 
     /** Exclus tests unitaires — simule un OCR terminé avant l’étape composition. */
     @VisibleForTesting
@@ -298,7 +297,7 @@ class CameraViewModel(
         viewModelScope.launch {
             _mediaPipeStatus.value = MediaPipeStatusViewState.checking()
             val available = withContext(Dispatchers.IO) {
-                runCatching { mediaPipeAvailabilityChecker.isAvailable() }.getOrDefault(false)
+                runCatching { mediaPipeApiProbe.isAvailable() }.getOrDefault(false)
             }
             _mediaPipeStatus.value = if (available) {
                 MediaPipeStatusViewState.available()
