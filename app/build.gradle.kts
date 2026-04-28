@@ -19,15 +19,28 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("String", "GEMMA_LOCAL_API_BASE_URL", "\"http://127.0.0.1:8080\"")
+        buildConfigField("String", "GEMMA_LOCAL_API_PING_PATH", "\"/health\"")
+        buildConfigField("String", "GEMMA_LOCAL_API_ANALYZE_PATH", "\"/analyze\"")
     }
 
     buildTypes {
+        debug {
+            // Endpoint par defaut pour l'integration locale en debug.
+            buildConfigField("String", "GEMMA_LOCAL_API_BASE_URL", "\"http://127.0.0.1:8080\"")
+            buildConfigField("String", "GEMMA_LOCAL_API_PING_PATH", "\"/health\"")
+            buildConfigField("String", "GEMMA_LOCAL_API_ANALYZE_PATH", "\"/analyze\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // A ajuster selon le point d'acces de production.
+            buildConfigField("String", "GEMMA_LOCAL_API_BASE_URL", "\"http://127.0.0.1:8080\"")
+            buildConfigField("String", "GEMMA_LOCAL_API_PING_PATH", "\"/health\"")
+            buildConfigField("String", "GEMMA_LOCAL_API_ANALYZE_PATH", "\"/analyze\"")
         }
     }
     compileOptions {
