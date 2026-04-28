@@ -10,7 +10,11 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.foodgpt.analysis.Gemma4LocalUiMessageResolver
+import com.foodgpt.analysis.AnalysisInputBuilder
 import androidx.lifecycle.viewModelScope
+import com.foodgpt.analysis.ingredientsegment.AnalysisSubmissionGate
+import com.foodgpt.analysis.ingredientsegment.IngredientSegmentPreparationService
+import com.foodgpt.analysis.ingredientsegment.SubmissionBlockedReason
 import com.foodgpt.composition.AnalyzeCompositionResult
 import com.foodgpt.composition.CompositionAnalysisEngine
 import com.foodgpt.composition.CompositionMessages
@@ -77,7 +81,11 @@ class CameraViewModel(
 
     private var lastRawTranscript: String? = null
     private var lastItemsPreview: List<String>? = null
+    private var pendingAnalysisSegment: String? = null
+    private var pendingScanId: String? = null
     private val mediaPipeApiProbe = MediaPipeLlmAvailabilityProbe()
+    private val segmentPreparationService = IngredientSegmentPreparationService()
+    private val submissionGate = AnalysisSubmissionGate()
 
     /** Exclus tests unitaires — simule un OCR terminé avant l’étape composition. */
     @VisibleForTesting
@@ -111,6 +119,8 @@ class CameraViewModel(
         inFlightScan = false
         lastRawTranscript = null
         lastItemsPreview = null
+        pendingAnalysisSegment = null
+        pendingScanId = null
         _previewSession.value += 1
         _scanState.value = if (permissionHandler.hasCameraPermission(getApplication())) {
             ScanState.CameraReady
@@ -202,18 +212,29 @@ class CameraViewModel(
                     val uiItems = mapper.toUi(result.items)
                     val itemLabels = uiItems.map { it.text }
                     val transcriptText = result.items.joinToString("\n") { it.normalizedText }
-                    val engine = compositionEngine
-                    if (engine == null) {
-                        _scanState.value = ScanState.Success(
-                            transcriptText = result.items.joinToString(", ") { it.normalizedText },
-                            items = itemLabels
+                    val extraction = segmentPreparationService.prepare(result.scanId, transcriptText)
+                    val previewDecision = submissionGate.evaluate(
+                        scanId = result.scanId,
+                        extraction = extraction,
+                        userConfirmed = false
+                    )
+                    if (!extraction.anchorFound || previewDecision.blockedReason == SubmissionBlockedReason.EMPTY_SEGMENT) {
+                        _scanState.value = ScanState.Error(
+                            "Section ingredients introuvable ou vide. Reprenez la photo ou editez le texte."
                         )
-                    } else {
-                        lastRawTranscript = transcriptText
-                        lastItemsPreview = itemLabels
-                        _scanState.value = ScanState.CompositionAnalyzing()
-                        runCompositionStage(engine, transcriptText, itemLabels)
+                        return@launch
                     }
+                    val segmentForAnalysis = AnalysisInputBuilder.buildSegmentPayload(
+                        extraction.segmentText.orEmpty()
+                    )
+                    pendingAnalysisSegment = segmentForAnalysis
+                    pendingScanId = result.scanId
+                    lastRawTranscript = transcriptText
+                    lastItemsPreview = itemLabels
+                    _scanState.value = ScanState.SegmentConfirmationRequired(
+                        segmentPreview = segmentForAnalysis,
+                        itemsPreview = itemLabels
+                    )
                 } else if (result.outcome == "empty") {
                     _scanState.value = ScanState.Empty(result.userMessage.ifBlank { "Aucun texte détecté" })
                 } else {
@@ -230,6 +251,38 @@ class CameraViewModel(
                 inFlightScan = false
             }
         }
+    }
+
+    fun confirmSegmentAndAnalyze() {
+        val segment = pendingAnalysisSegment ?: return
+        val scanId = pendingScanId ?: return
+        val items = lastItemsPreview.orEmpty()
+        val extraction = segmentPreparationService.prepare(scanId, segment)
+        val decision = submissionGate.evaluate(
+            scanId = scanId,
+            extraction = extraction,
+            userConfirmed = true
+        )
+        if (!decision.submissionAllowed) {
+            _scanState.value = ScanState.Error("Analyse bloquee: confirmation ou segment invalide.")
+            return
+        }
+        val engine = compositionEngine
+        if (engine == null) {
+            _scanState.value = ScanState.Success(
+                transcriptText = decision.segmentPreview,
+                items = items
+            )
+            return
+        }
+        viewModelScope.launch {
+            _scanState.value = ScanState.CompositionAnalyzing()
+            runCompositionStage(engine, decision.segmentPreview, items)
+        }
+    }
+
+    fun rejectSegmentConfirmation() {
+        _scanState.value = ScanState.Error("Analyse annulee. Vous pouvez reprendre une photo.")
     }
 
     private suspend fun runCompositionStage(

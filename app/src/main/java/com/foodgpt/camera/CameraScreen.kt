@@ -211,6 +211,29 @@ fun CameraScreen(
                     Text("Nouveau scan")
                 }
             }
+            is ScanState.SegmentConfirmationRequired -> {
+                val confirmation = state as ScanState.SegmentConfirmationRequired
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Verifier la ligne ingredients", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = confirmation.segmentPreview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag("segment_preview_text")
+                    )
+                    Button(
+                        onClick = viewModel::confirmSegmentAndAnalyze,
+                        modifier = Modifier.testTag("confirm_segment_button")
+                    ) {
+                        Text("Confirmer et analyser")
+                    }
+                    OutlinedButton(
+                        onClick = viewModel::rejectSegmentConfirmation,
+                        modifier = Modifier.testTag("reject_segment_button")
+                    ) {
+                        Text("Reprendre la photo")
+                    }
+                }
+            }
             is ScanState.Empty -> {
                 Text((state as ScanState.Empty).message)
                 Button(onClick = viewModel::onRetry, modifier = Modifier.testTag("retry_after_empty")) {
