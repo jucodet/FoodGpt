@@ -57,10 +57,34 @@ class AndroidGemma4LocalGateway(
         val modelFile = (locatedModel as? GemmaModelLocation.Ready)?.modelFile
             ?: throw IllegalStateException("Modele Gemma local indisponible")
 
+        val backendErrors = mutableListOf<String>()
+        for (backend in prioritizedBackends()) {
+            val output = runCatching {
+                runAnalyzeOnBackend(
+                    modelPath = modelFile.absolutePath,
+                    backend = backend,
+                    inputText = inputText
+                )
+            }.getOrElse { t ->
+                backendErrors += "${backend.javaClass.simpleName}:${t.javaClass.simpleName}"
+                null
+            }
+            if (!output.isNullOrBlank()) return output
+        }
+        throw IllegalStateException(
+            "Execution Gemma4 locale en echec sur tous les backends (${backendErrors.joinToString(",")})."
+        )
+    }
+
+    private fun runAnalyzeOnBackend(
+        modelPath: String,
+        backend: Backend,
+        inputText: String
+    ): String {
         val engine = Engine(
             EngineConfig(
-                modelPath = modelFile.absolutePath,
-                backend = Backend.CPU(),
+                modelPath = modelPath,
+                backend = backend,
                 cacheDir = context.cacheDir.absolutePath
             )
         )
@@ -77,6 +101,15 @@ class AndroidGemma4LocalGateway(
             }
         } finally {
             engine.close()
+        }
+    }
+
+    private fun prioritizedBackends(): List<Backend> {
+        val nativeLibDir = context.applicationInfo.nativeLibraryDir
+        return buildList {
+            add(Backend.NPU(nativeLibraryDir = nativeLibDir))
+            add(Backend.GPU())
+            add(Backend.CPU())
         }
     }
 
