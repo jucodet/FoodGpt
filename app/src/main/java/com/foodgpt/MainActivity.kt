@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
                         repository = repository
                     )
                 }
-                val localGateway = AndroidGemma4LocalGateway()
+                val localGateway = AndroidGemma4LocalGateway(applicationContext)
                 val localClient = Gemma4LocalClient(
                     availabilityChecker = Gemma4LocalAvailabilityChecker(localGateway),
                     requestMapper = Gemma4LocalRequestMapper(),
