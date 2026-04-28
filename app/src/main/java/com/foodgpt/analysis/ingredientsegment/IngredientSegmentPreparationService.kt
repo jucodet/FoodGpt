@@ -4,9 +4,11 @@ class IngredientSegmentPreparationService(
     private val normalizer: IngredientAnchorNormalizer = IngredientAnchorNormalizer(),
     private val boundaryResolver: IngredientSegmentBoundaryResolver = IngredientSegmentBoundaryResolver()
 ) {
+    private val canonicalAnchorRegex = Regex("ingredients\\s*:", RegexOption.IGNORE_CASE)
 
     fun prepare(scanId: String, ocrText: String): IngredientSegmentExtraction {
-        val anchorIndex = normalizer.findFirstAnchorIndex(ocrText)
+        val anchorIndex = canonicalAnchorRegex.find(ocrText)?.range?.first
+            ?: normalizer.findFirstAnchorIndex(ocrText)
             ?: return IngredientSegmentExtraction(
                 scanId = scanId,
                 anchorFound = false,
