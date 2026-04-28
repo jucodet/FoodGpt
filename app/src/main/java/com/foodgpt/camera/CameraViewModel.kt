@@ -23,6 +23,9 @@ import com.foodgpt.ingredients.ScanFailureMessageBuilder
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.ScanFailureClassifier
+import com.foodgpt.gemma4local.AndroidGemma4LocalGateway
+import com.foodgpt.gemma4local.Gemma4LocalAvailabilityChecker
+import com.foodgpt.home.MediaPipeStatusViewState
 import com.foodgpt.welcome.WelcomeDisplayLogger
 import com.foodgpt.welcome.WelcomeMessagePolicy
 import com.foodgpt.welcome.WelcomeMessageProvider
@@ -65,12 +68,17 @@ class CameraViewModel(
 
     private val _welcomeUiState = MutableStateFlow<WelcomeMessageUiState>(WelcomeMessageUiState.Hidden)
     val welcomeUiState: StateFlow<WelcomeMessageUiState> = _welcomeUiState.asStateFlow()
+    private val _mediaPipeStatus = MutableStateFlow(MediaPipeStatusViewState.checking())
+    val mediaPipeStatus: StateFlow<MediaPipeStatusViewState> = _mediaPipeStatus.asStateFlow()
 
     private var bindJob: Job? = null
     private var inFlightScan = false
 
     private var lastRawTranscript: String? = null
     private var lastItemsPreview: List<String>? = null
+    private val mediaPipeAvailabilityChecker = Gemma4LocalAvailabilityChecker(
+        AndroidGemma4LocalGateway(application.applicationContext)
+    )
 
     /** Exclus tests unitaires — simule un OCR terminé avant l’étape composition. */
     @VisibleForTesting
@@ -83,6 +91,7 @@ class CameraViewModel(
         bindJob?.cancel()
         captureController.unbind()
         _scanState.value = ScanState.PermissionDenied
+        refreshMediaPipeAvailability()
     }
 
     fun onPermissionGranted() {
@@ -94,6 +103,7 @@ class CameraViewModel(
         captureController.unbind()
         _previewSession.value += 1
         _scanState.value = ScanState.CameraReady
+        refreshMediaPipeAvailability()
     }
 
     fun onRetry() {
@@ -108,10 +118,12 @@ class CameraViewModel(
         } else {
             ScanState.PermissionDenied
         }
+        refreshMediaPipeAvailability()
     }
 
     fun onLoginSucceeded(userId: String = "connected-user") {
         _welcomeUiState.value = welcomePolicy.onLoginSucceeded(userId).toUiState()
+        refreshMediaPipeAvailability()
     }
 
     /**
@@ -280,6 +292,20 @@ class CameraViewModel(
         bindJob?.cancel()
         captureController.shutdown()
         super.onCleared()
+    }
+
+    private fun refreshMediaPipeAvailability() {
+        viewModelScope.launch {
+            _mediaPipeStatus.value = MediaPipeStatusViewState.checking()
+            val available = withContext(Dispatchers.IO) {
+                runCatching { mediaPipeAvailabilityChecker.isAvailable() }.getOrDefault(false)
+            }
+            _mediaPipeStatus.value = if (available) {
+                MediaPipeStatusViewState.available()
+            } else {
+                MediaPipeStatusViewState.unavailable()
+            }
+        }
     }
 
     companion object {

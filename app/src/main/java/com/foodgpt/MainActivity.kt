@@ -29,6 +29,7 @@ import com.foodgpt.gemma4local.Gemma4LocalClient
 import com.foodgpt.gemma4local.Gemma4LocalErrorMapper
 import com.foodgpt.gemma4local.Gemma4LocalMetricsLogger
 import com.foodgpt.gemma4local.Gemma4LocalRequestMapper
+import com.foodgpt.home.HomeSpecPriorityResolver
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.AiEdgeGalleryRecognizer
 import com.foodgpt.recognition.DeviceAiCapabilityDetector
@@ -62,6 +63,8 @@ class MainActivity : ComponentActivity() {
         val app = application as FoodGptApplication
 
         setContent {
+            // La spec 012 definit la reference d'ordre UI pour l'accueil.
+            HomeSpecPriorityResolver.resolveHomeUiOrderSpec()
             val imageManager = remember { TemporaryImageManager(applicationContext) }
             var uiReady by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) {

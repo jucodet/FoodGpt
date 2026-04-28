@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.foodgpt.home.HomeSpacingRules
+import com.foodgpt.home.MediaPipeStatusIndicator
 import com.foodgpt.welcome.WelcomeMessageUiState
 import java.io.File
 
@@ -41,6 +43,7 @@ fun CameraScreen(
     val state by viewModel.scanState.collectAsState()
     val previewSession by viewModel.previewSession.collectAsState()
     val welcomeState by viewModel.welcomeUiState.collectAsState()
+    val mediaPipeStatus by viewModel.mediaPipeStatus.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     Column(
@@ -50,7 +53,10 @@ fun CameraScreen(
             .widthIn(max = 720.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Mode appareil photo", style = MaterialTheme.typography.headlineSmall)
+        MediaPipeStatusIndicator(
+            viewState = mediaPipeStatus,
+            modifier = Modifier.fillMaxWidth()
+        )
         if (welcomeState is WelcomeMessageUiState.Displayed) {
             Text(
                 text = (welcomeState as WelcomeMessageUiState.Displayed).text,
@@ -217,52 +223,42 @@ fun CameraScreen(
             ScanState.PreviewActive,
             ScanState.Capturing,
             ScanState.Analyzing -> {
-                key(previewSession) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(360.dp)
-                    ) {
-                        CameraPreviewBox(
-                            onPreviewViewCreated = { previewView ->
-                                viewModel.attachPreview(previewView, lifecycleOwner)
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        if (state is ScanState.PreviewInitializing) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                        if (state is ScanState.Capturing || state is ScanState.Analyzing) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(verticalArrangement = Arrangement.spacedBy(HomeSpacingRules.standardFixedSpacing)) {
+                    key(previewSession) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(360.dp)
+                                .testTag("photo_preview_box")
+                        ) {
+                            CameraPreviewBox(
+                                onPreviewViewCreated = { previewView ->
+                                    viewModel.attachPreview(previewView, lifecycleOwner)
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            if (state is ScanState.PreviewInitializing) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     CircularProgressIndicator()
-                                    Text("Analyse en cours…")
+                                }
+                            }
+                            if (state is ScanState.Capturing || state is ScanState.Analyzing) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator()
+                                        Text("Analyse en cours…")
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Text(
-                    text = when (state) {
-                        ScanState.PreviewActive -> "Aperçu caméra actif"
-                        ScanState.PreviewInitializing -> "Démarrage de l'aperçu caméra…"
-                        ScanState.Capturing -> "Capture en cours…"
-                        ScanState.Analyzing -> "Traitement de l'image…"
-                        else -> "Préparez le cadrage"
-                    },
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                if (state is ScanState.PreviewActive) {
                     Button(
                         onClick = { viewModel.capturePhoto(onCreateTempImage()) },
                         modifier = Modifier
@@ -271,6 +267,17 @@ fun CameraScreen(
                     ) {
                         Text("Prendre la photo")
                     }
+
+                    Text(
+                        text = when (state) {
+                            ScanState.PreviewActive -> "Aperçu caméra actif"
+                            ScanState.PreviewInitializing -> "Démarrage de l'aperçu caméra…"
+                            ScanState.Capturing -> "Capture en cours…"
+                            ScanState.Analyzing -> "Traitement de l'image…"
+                            else -> "Préparez le cadrage"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }

@@ -9,4 +9,8 @@ data class CaptureAction(
     val sourceControl: String,
     val status: String,
     val ignoreReason: String? = null
-)
+) {
+    companion object {
+        const val SOURCE_CAPTURE_BUTTON = "capture_button"
+    }
+}
