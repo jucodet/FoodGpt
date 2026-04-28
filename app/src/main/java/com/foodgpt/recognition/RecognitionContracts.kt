@@ -23,6 +23,21 @@ data class IngredientRecognitionItem(
     val isAllergenMarked: Boolean
 )
 
+data class IngredientAnchorCandidate(
+    val startIndex: Int,
+    val rawMatch: String,
+    val isCanonical: Boolean
+)
+
+data class IngredientAnchorDetectionResult(
+    val scanId: String,
+    val candidates: List<IngredientAnchorCandidate>,
+    val selectionRule: String,
+    val selectedStartIndex: Int?,
+    val anchorFound: Boolean,
+    val blockedReason: String
+)
+
 data class IngredientRecognitionResult(
     val scanId: String,
     val outcome: String,
