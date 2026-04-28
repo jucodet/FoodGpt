@@ -214,7 +214,12 @@ class CameraViewModel(
                     val transcriptText = result.items.joinToString("\n") { it.normalizedText }
                     val canonicalAnchor = Regex("ingredients\\s*:", RegexOption.IGNORE_CASE).find(transcriptText)
                     if (canonicalAnchor == null) {
-                        _scanState.value = ScanState.Error(failureMessageBuilder.build("no-canonical-anchor"))
+                        lastRawTranscript = transcriptText
+                        lastItemsPreview = itemLabels
+                        _scanState.value = ScanState.Success(
+                            transcriptText = transcriptText,
+                            items = itemLabels
+                        )
                         return@launch
                     }
                     val extraction = segmentPreparationService.prepare(result.scanId, transcriptText)
