@@ -212,7 +212,7 @@ class CameraViewModel(
                     val uiItems = mapper.toUi(result.items)
                     val itemLabels = uiItems.map { it.text }
                     val transcriptText = result.items.joinToString("\n") { it.normalizedText }
-                    val canonicalAnchor = Regex("ingredients\\s*:", RegexOption.IGNORE_CASE).find(transcriptText)
+                    val canonicalAnchor = Regex("ingr[ée]dients?\\s*:", RegexOption.IGNORE_CASE).find(transcriptText)
                     if (canonicalAnchor == null) {
                         lastRawTranscript = transcriptText
                         lastItemsPreview = itemLabels
