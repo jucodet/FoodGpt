@@ -3,6 +3,7 @@ package com.foodgpt.analysis.ingredientsegment
 import android.util.Log
 
 class AnalysisSubmissionGate {
+    private val ingredientsLabelOnlyRegex = Regex("^ingr[ée]dients?\\s*:?$", RegexOption.IGNORE_CASE)
 
     fun evaluate(
         scanId: String,
@@ -21,7 +22,7 @@ class AnalysisSubmissionGate {
         }
 
         val segment = extraction.segmentText.orEmpty().trim()
-        if (segment.isBlank() || segment == "ingredients" || segment == "ingredients:") {
+        if (segment.isBlank() || ingredientsLabelOnlyRegex.matches(segment)) {
             logBlocked(scanId, SubmissionBlockedReason.EMPTY_SEGMENT)
             return AnalysisSubmissionDecision(
                 scanId = scanId,
