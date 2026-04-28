@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.foodgpt.analysis.Gemma4LocalUiMessageResolver
 import androidx.lifecycle.viewModelScope
 import com.foodgpt.composition.AnalyzeCompositionResult
 import com.foodgpt.composition.CompositionAnalysisEngine
@@ -22,6 +23,12 @@ import com.foodgpt.ingredients.ScanFailureMessageBuilder
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.IngredientRecognitionCoordinator
 import com.foodgpt.recognition.ScanFailureClassifier
+import com.foodgpt.welcome.WelcomeDisplayLogger
+import com.foodgpt.welcome.WelcomeMessagePolicy
+import com.foodgpt.welcome.WelcomeMessageProvider
+import com.foodgpt.welcome.WelcomeMessageSelector
+import com.foodgpt.welcome.WelcomeMessageUiState
+import com.foodgpt.welcome.toUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +49,12 @@ class CameraViewModel(
     private val failureClassifier: ScanFailureClassifier = ScanFailureClassifier(),
     private val failureMessageBuilder: ScanFailureMessageBuilder = ScanFailureMessageBuilder(),
     private val retryHandler: RetryScanActionHandler = RetryScanActionHandler(),
-    private val captureController: CameraCaptureController = CameraCaptureController(application.applicationContext)
+    private val captureController: CameraCaptureController = CameraCaptureController(application.applicationContext),
+    private val welcomePolicy: WelcomeMessagePolicy = WelcomeMessagePolicy(
+        provider = WelcomeMessageProvider(application.applicationContext),
+        selector = WelcomeMessageSelector(),
+        logger = WelcomeDisplayLogger()
+    )
 ) : AndroidViewModel(application) {
 
     private val _scanState = MutableStateFlow<ScanState>(ScanState.CameraReady)
@@ -50,6 +62,9 @@ class CameraViewModel(
 
     private val _previewSession = MutableStateFlow(0)
     val previewSession: StateFlow<Int> = _previewSession.asStateFlow()
+
+    private val _welcomeUiState = MutableStateFlow<WelcomeMessageUiState>(WelcomeMessageUiState.Hidden)
+    val welcomeUiState: StateFlow<WelcomeMessageUiState> = _welcomeUiState.asStateFlow()
 
     private var bindJob: Job? = null
     private var inFlightScan = false
@@ -93,6 +108,10 @@ class CameraViewModel(
         } else {
             ScanState.PermissionDenied
         }
+    }
+
+    fun onLoginSucceeded(userId: String = "connected-user") {
+        _welcomeUiState.value = welcomePolicy.onLoginSucceeded(userId).toUiState()
     }
 
     /**
@@ -242,11 +261,14 @@ class CameraViewModel(
                     }
                 }
             }
-            is AnalyzeCompositionResult.GemmaError -> ScanState.GemmaUnavailable(
-                code = outcome.code,
-                message = outcome.message,
-                rawTranscript = rawText
-            )
+            is AnalyzeCompositionResult.GemmaError -> {
+                val uiMessage = Gemma4LocalUiMessageResolver.resolve(outcome.code, outcome.message)
+                ScanState.GemmaUnavailable(
+                    code = outcome.code,
+                    message = uiMessage,
+                    rawTranscript = rawText
+                )
+            }
             is AnalyzeCompositionResult.CompositionLimit -> ScanState.CompositionLimit(
                 message = outcome.message,
                 rawTranscript = rawText

@@ -20,9 +20,15 @@ import androidx.lifecycle.ViewModelProvider
 import com.foodgpt.camera.CameraScreen
 import com.foodgpt.camera.CameraViewModel
 import com.foodgpt.camera.ScanState
-import com.foodgpt.composition.GemmaModelLocator
-import com.foodgpt.composition.LiteRtGemmaEngine
+import com.foodgpt.composition.Gemma4LocalCompositionEngine
 import com.foodgpt.data.repository.ScanSessionRepository
+import com.foodgpt.gemma4local.AndroidGemma4LocalGateway
+import com.foodgpt.gemma4local.DeviceClassResolver
+import com.foodgpt.gemma4local.Gemma4LocalAvailabilityChecker
+import com.foodgpt.gemma4local.Gemma4LocalClient
+import com.foodgpt.gemma4local.Gemma4LocalErrorMapper
+import com.foodgpt.gemma4local.Gemma4LocalMetricsLogger
+import com.foodgpt.gemma4local.Gemma4LocalRequestMapper
 import com.foodgpt.permissions.CameraPermissionHandler
 import com.foodgpt.recognition.AiEdgeGalleryRecognizer
 import com.foodgpt.recognition.DeviceAiCapabilityDetector
@@ -73,12 +79,21 @@ class MainActivity : ComponentActivity() {
                         repository = repository
                     )
                 }
-                val gemmaLocator = GemmaModelLocator(applicationContext)
-                val compositionEngine = LiteRtGemmaEngine(applicationContext, gemmaLocator)
+                val localGateway = AndroidGemma4LocalGateway(applicationContext)
+                val localClient = Gemma4LocalClient(
+                    availabilityChecker = Gemma4LocalAvailabilityChecker(localGateway),
+                    requestMapper = Gemma4LocalRequestMapper(),
+                    errorMapper = Gemma4LocalErrorMapper(),
+                    metricsLogger = Gemma4LocalMetricsLogger(),
+                    deviceClassResolver = DeviceClassResolver(applicationContext),
+                    gateway = localGateway
+                )
+                val compositionEngine = Gemma4LocalCompositionEngine(localClient)
                 cameraViewModel = ViewModelProvider(
                     this@MainActivity,
                     CameraViewModel.factory(application, coordinator, compositionEngine)
                 )[CameraViewModel::class.java]
+                cameraViewModel.onLoginSucceeded()
                 if (permissionHandler.hasCameraPermission(this@MainActivity)) {
                     cameraViewModel.onPermissionGranted()
                 } else {
